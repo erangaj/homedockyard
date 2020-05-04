@@ -3,33 +3,36 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/erangaj/homedockyard/pkg/dockerservice"
 	"github.com/gorilla/mux"
 )
 
 type restService struct {
-	ds *dockerservice.DockerService
+	ds   *dockerservice.DockerService
+	prod bool
 }
 
 //go:generate broccoli -src ../../web/public -o public
 
 // Serv starts the HTTP server
-func Serv() {
+func Serv(prod bool) {
 	ds := dockerservice.DockerService{}
-	rs := restService{ds: &ds}
+	rs := restService{ds: &ds, prod: prod}
 
 	ds.Init()
 
 	router := mux.NewRouter()
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
-	router.PathPrefix("/{dir}/{path}").HandlerFunc(staticFile).Methods("GET")
-	router.PathPrefix("/{path}").HandlerFunc(staticFile).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(staticFile).Methods("GET")
+	router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
+	router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
+	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
 	log.Fatal(http.ListenAndServe(":9080", router))
 
 	ds.Close()
@@ -50,7 +53,7 @@ func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, res)
 }
 
-func staticFile(w http.ResponseWriter, r *http.Request) {
+func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	var filepath string
@@ -66,11 +69,11 @@ func staticFile(w http.ResponseWriter, r *http.Request) {
 
 	hasError := false
 
-	f, err := br.Open("/web/public" + filepath)
+	f, err := openFile(filepath, rs.prod)
 
 	if err != nil {
 		log.Printf("Unable to open %v: %v", filepath, err)
-		f, _ = br.Open("/web/public/404.html")
+		f, _ = openFile("/404.html", rs.prod)
 		w.WriteHeader(http.StatusNotFound)
 		hasError = true
 	}
@@ -85,4 +88,11 @@ func staticFile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 	w.Write(b)
+}
+
+func openFile(filepath string, prod bool) (io.Reader, error) {
+	if prod {
+		return br.Open("/web/public" + filepath)
+	}
+	return os.Open("../../web/public/" + filepath)
 }
