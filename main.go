@@ -21,10 +21,10 @@ func main() {
 
 	ds.Init()
 
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", homeLink)
-	router.HandleFunc("/containers", rs.containers).Methods("GET")
-	router.HandleFunc("/pullimages", rs.pullimages).Methods("GET")
+	router := mux.NewRouter()
+	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
+	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/")))
 	log.Fatal(http.ListenAndServe(":9080", router))
 
 	ds.Close()
