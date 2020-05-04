@@ -17,7 +17,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "/home/coder/git/HomeDockyard/main.go",
+      "program": "/home/coder/git/homedockyard/cmd/homedockyard/main.go",
       "env": {},
       "args": []
     }
