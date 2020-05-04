@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/erangaj/homedockyard/internal/dockerservice"
+	"github.com/erangaj/homedockyard/pkg/dockerservice"
 	"github.com/gorilla/mux"
 )
 
