@@ -58,6 +58,7 @@ func (s *DockerService) Containers() []Container {
 		var name string
 		if len(container.Names) > 0 {
 			name = container.Names[0]
+			name = strings.Trim(name, "/")
 		}
 
 		imageName := cIns.Config.Image

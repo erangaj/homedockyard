@@ -18,7 +18,7 @@ type restService struct {
 	prod bool
 }
 
-//go:generate broccoli -src ../../web/public -o public
+//go:generate broccoli -src ../../web/build -o public
 
 // Serv starts the HTTP server
 func Serv(prod bool) {
@@ -30,8 +30,8 @@ func Serv(prod bool) {
 	router := mux.NewRouter()
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
-	router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
-	router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
+	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
+	// router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
 	log.Fatal(http.ListenAndServe(":9080", router))
 
@@ -54,16 +54,8 @@ func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	var filepath string
-	if dir, ok := vars["dir"]; ok {
-		filepath = "/" + dir
-	}
-	if path, ok := vars["path"]; ok {
-		filepath += "/" + path
-	}
-	if filepath == "" {
+	var filepath string = r.RequestURI
+	if filepath == "/" {
 		filepath = "/index.html"
 	}
 
@@ -92,7 +84,7 @@ func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) {
 
 func openFile(filepath string, prod bool) (io.Reader, error) {
 	if prod {
-		return br.Open("/web/public" + filepath)
+		return br.Open("/web/build" + filepath)
 	}
-	return os.Open("../../web/public/" + filepath)
+	return os.Open("../../web/build/" + filepath)
 }
