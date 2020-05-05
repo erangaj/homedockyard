@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/erangaj/homedockyard/pkg/dockerservice"
 	"github.com/gorilla/mux"
@@ -28,6 +29,8 @@ func Serv(prod bool) {
 	ds.Init()
 
 	router := mux.NewRouter()
+	router.Use(commonMiddleware)
+
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
 	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
@@ -36,6 +39,25 @@ func Serv(prod bool) {
 	log.Fatal(http.ListenAndServe(":9080", router))
 
 	ds.Close()
+}
+
+func commonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.RequestURI, ".css") {
+			w.Header().Add("Content-Type", "text/css; charset=utf-8")
+		} else if strings.HasSuffix(r.RequestURI, ".js") {
+			w.Header().Add("Content-Type", "application/javascript; charset=UTF-8")
+		} else if strings.HasSuffix(r.RequestURI, ".jsx") {
+			w.Header().Add("Content-Type", "application/javascript; charset=UTF-8")
+		} else if strings.HasSuffix(r.RequestURI, ".html") {
+			w.Header().Add("Content-Type", "apptext/html; charset=utf-8")
+		} else if strings.HasSuffix(r.RequestURI, ".json") {
+			w.Header().Add("Content-Type", "application/json; charset=UTF-8")
+		} else if strings.HasPrefix(r.RequestURI, "/api") {
+			w.Header().Add("Content-Type", "application/json; charset=UTF-8")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (rs *restService) containers(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +101,7 @@ func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) {
 	if !hasError {
 		w.WriteHeader(http.StatusOK)
 	}
+
 	w.Write(b)
 }
 
