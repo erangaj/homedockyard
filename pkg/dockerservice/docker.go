@@ -29,6 +29,7 @@ type Container struct {
 	//Labels    map[string]string
 	State  string `json:"state"`
 	Status string `json:"status"`
+	Icon   string `json:"icon"`
 }
 
 // Init Initiates Docker connection

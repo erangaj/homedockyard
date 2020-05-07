@@ -14,6 +14,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	defaultIcon = "default.svg"
+)
+
+var (
+	icons map[string]string
+)
+
 type restService struct {
 	ds   *dockerservice.DockerService
 	prod bool
@@ -64,6 +72,8 @@ func (rs *restService) containers(w http.ResponseWriter, r *http.Request) {
 	ds := rs.ds
 	cs := ds.Containers()
 
+	cs = updateIcon(cs)
+
 	if err := json.NewEncoder(w).Encode(cs); err != nil {
 		panic(err)
 	}
@@ -75,7 +85,7 @@ func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, res)
 }
 
-func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) {
+func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) { //TODO: use br.Serve
 	var filepath string = r.RequestURI
 	if filepath == "/" {
 		filepath = "/index.html"
@@ -110,4 +120,41 @@ func openFile(filepath string, prod bool) (io.Reader, error) {
 		return br.Open("/web/build" + filepath)
 	}
 	return os.Open("../../web/build/" + filepath)
+}
+
+func updateIcon(cs []dockerservice.Container) []dockerservice.Container {
+	if icons == nil {
+		dir, _ := br.Open("/web/build/icons")
+		files, _ := dir.Readdir(0)
+		icons = make(map[string]string, len(files))
+		for _, file := range files {
+			filename := file.Name()
+			icons[strings.ToLower(strings.Split(filename, ".")[0])] = filename
+		}
+	}
+
+	newcs := make([]dockerservice.Container, len(cs))
+	for i, c := range cs {
+		imageNameParts := strings.Split(c.ImageName, ":")
+		imageNameParts = strings.Split(imageNameParts[0], "/")
+		if len(imageNameParts) > 1 {
+			if f, ok := icons[strings.ToLower(c.Name)]; ok {
+				c.Icon = f
+			} else if f, ok := icons[imageNameParts[0]+"___"+imageNameParts[1]]; ok {
+				c.Icon = f
+			} else if f, ok := icons[imageNameParts[1]]; ok {
+				c.Icon = f
+			} else {
+				c.Icon = defaultIcon
+			}
+		} else {
+			if f, ok := icons[imageNameParts[0]]; ok {
+				c.Icon = f
+			} else {
+				c.Icon = defaultIcon
+			}
+		}
+		newcs[i] = c
+	}
+	return newcs
 }
