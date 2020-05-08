@@ -1,6 +1,6 @@
 import React from 'react';
 import './container.component.css'
-import { Grid, Paper, Typography, IconButton } from '@material-ui/core';
+import { Grid, Paper, Typography, IconButton, Tooltip } from '@material-ui/core';
 import { Stop, PlayArrow, Update } from '@material-ui/icons';
 import { makeStyles } from '@material-ui/core/styles';
 
@@ -32,12 +32,14 @@ export const Container = (props) => {
             <Paper elevation={2} className={classes.paper}>
                 <div className="container-grid-item">
                     <div className="container-icon-cell">
-                        <img className="container-icon" src={'icons/' + props.container.icon} />
+                      <Tooltip title={props.container.imageName}>
+                        <img alt={props.container.imageName} className="container-icon" src={'icons/' + props.container.icon} />
+                      </Tooltip>
                     </div>
                     <div className="container-name-cell">
-                        <Typography variant="body1">{props.container.name}</Typography>
+                        <Typography variant="body1" >{props.container.name}</Typography>
                         {
-                            props.container.state=='running' ?
+                            props.container.state==='running' ?
                             <Typography variant="body2" className={classes.running}>{props.container.state}<IconButton size="small" title="Stop Container" color="default"><Stop /></IconButton></Typography>
                             :
                             <Typography variant="body2" className={classes.not_running}>{props.container.state}<IconButton size="small" title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>

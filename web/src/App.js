@@ -31,7 +31,8 @@ const useStyles = theme => ({
 });
 
 class App extends Component {
-
+  intervalID;
+  
   constructor() {
     super();
     this.state = {containers: [], drawerOpen: false, updateCount: 0};
@@ -45,6 +46,15 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.fetchContainers();
+    this.intervalID = setInterval(this.fetchContainers.bind(this), 60000);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.intervalID);
+  }
+
+  fetchContainers() {
     fetch("https://codetest.eranga.org/api/containers")
     .then(response => response.json())
     .then(containers => {
@@ -53,6 +63,7 @@ class App extends Component {
         if (container.updateAvailable) {
           updateCount++;
         }
+        return 1;
       });
       this.setState({containers, updateCount})
     });

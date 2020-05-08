@@ -127,6 +127,7 @@ func openFile(filepath string, prod bool) (io.Reader, error) {
 func updateIcon(cs []dockerservice.Container) []dockerservice.Container {
 	if icons == nil {
 		dir, _ := br.Open("/web/build/icons")
+		//dir, _ := os.Open("../../web/build/icons")
 		files, _ := dir.Readdir(0)
 		icons = make(map[string]string, len(files))
 		for _, file := range files {
