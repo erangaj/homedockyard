@@ -59,6 +59,8 @@ func commonMiddleware(next http.Handler) http.Handler {
 			w.Header().Add("Content-Type", "application/javascript; charset=UTF-8")
 		} else if strings.HasSuffix(r.RequestURI, ".html") {
 			w.Header().Add("Content-Type", "apptext/html; charset=utf-8")
+		} else if strings.HasSuffix(r.RequestURI, ".svg") {
+			w.Header().Add("Content-Type", "image/svg+xml")
 		} else if strings.HasSuffix(r.RequestURI, ".json") {
 			w.Header().Add("Content-Type", "application/json; charset=UTF-8")
 		} else if strings.HasPrefix(r.RequestURI, "/api") {
