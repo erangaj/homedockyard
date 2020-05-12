@@ -34,11 +34,8 @@ type idJSON struct {
 //go:generate broccoli -src ../../web/build -o public
 
 // Serv starts the HTTP server
-func Serv(prod bool) {
-	ds := dockerservice.DockerService{}
-	rs := restService{ds: &ds, prod: prod}
-
-	ds.Init()
+func Serv(ds *dockerservice.DockerService, prod bool) {
+	rs := restService{ds: ds, prod: prod}
 
 	router := mux.NewRouter()
 	router.Use(commonMiddleware)
