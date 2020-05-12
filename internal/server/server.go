@@ -27,6 +27,10 @@ type restService struct {
 	prod bool
 }
 
+type idJSON struct {
+	ID string `json:"id"`
+}
+
 //go:generate broccoli -src ../../web/build -o public
 
 // Serv starts the HTTP server
@@ -41,6 +45,8 @@ func Serv(prod bool) {
 
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
+	router.PathPrefix("/api/startcontainer").HandlerFunc(rs.startcontainer).Methods("POST")
+	router.PathPrefix("/api/stopcontainer").HandlerFunc(rs.stopcontainer).Methods("POST")
 	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	// router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
@@ -85,6 +91,28 @@ func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
 	ds := rs.ds
 	res := ds.StartImagePull()
 	fmt.Fprintf(w, res)
+}
+
+func (rs *restService) startcontainer(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var idjson idJSON
+	err := decoder.Decode(&idjson)
+	if err != nil {
+		panic(err)
+	}
+	rs.ds.StartContainer(idjson.ID)
+	fmt.Fprint(w, "{\"result\":\"success\"}")
+}
+
+func (rs *restService) stopcontainer(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var idjson idJSON
+	err := decoder.Decode(&idjson)
+	if err != nil {
+		panic(err)
+	}
+	rs.ds.StopContainer(idjson.ID)
+	fmt.Fprint(w, "{\"result\":\"success\"}")
 }
 
 func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) { //TODO: use br.Serve

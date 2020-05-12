@@ -32,11 +32,15 @@ const useStyles = theme => ({
 
 class App extends Component {
   intervalID;
+  quickRefreshCount = 0;
   
   constructor() {
     super();
     this.state = {containers: [], drawerOpen: false, updateCount: 0};
     this.toggleDrawer = this.toggleDrawer.bind(this);
+    this.startContainer = this.startContainer.bind(this);
+    this.stopContainer = this.stopContainer.bind(this);
+    this.showLoading = this.showLoading.bind(this);
   }
 
   toggleDrawer() {
@@ -68,11 +72,74 @@ class App extends Component {
       this.setState({containers, updateCount})
     });
   }
+
+  quickRefresh() {
+    if (this.quickRefreshCount<5) {
+      this.quickRefreshCount++;
+      this.fetchContainers.bind(this);
+      this.fetchContainers();
+    } else {
+      clearInterval(this.intervalID);
+      this.intervalID = setInterval(this.fetchContainers.bind(this), 60000);
+    }
+  }
+
+  showLoading(id) {
+      let cs = this.state.containers;
+      let newcs = [];
+      cs.forEach(c => {
+        if (c.id===id) {
+          c.loading=true
+        }
+        newcs.push(c);
+      });
+      this.setState({containers: newcs})
+  }
+
+  startContainer(id) {
+    let this_ = this;
+    this.showLoading(id);
+    fetch('https://codetest.eranga.org/api/startcontainer', {
+      method: 'post',
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        id: id
+      })
+    })
+    .then(response => response.json())
+    .then(result => {
+      clearInterval(this_.intervalID);
+      this_.quickRefreshCount = 0;
+      this_.intervalID = setInterval(this.quickRefresh.bind(this), 10000);
+    });
+  }
+ 
+  stopContainer(id) {
+    let this_ = this;
+    this.showLoading(id);
+    fetch('https://codetest.eranga.org/api/stopcontainer', {
+      method: 'post',
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        id: id
+      })
+    })
+    .then(response => response.json())
+    .then(result => {
+      clearInterval(this_.intervalID);
+      this_.quickRefreshCount = 0;
+      this_.intervalID = setInterval(this.quickRefresh.bind(this), 10000);
+    });
+  }
  
   render() {
     const { classes } = this.props;
     return (
-      <ThemeProvider theme={darkTheme} className={classes.root}>
+      <ThemeProvider theme={darkTheme}>
         <CssBaseline />
         <AppBar position="static">
           <Toolbar>
@@ -103,7 +170,7 @@ class App extends Component {
         </List>
         </Drawer>
         <Box theme={darkTheme} className={classes.box} >
-          <ContainerGrid containers={this.state.containers} />
+          <ContainerGrid containers={this.state.containers} onContainerStart={this.startContainer} onContainerStop={this.stopContainer} />
         </Box>
       </ThemeProvider>
     );

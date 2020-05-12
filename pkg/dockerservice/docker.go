@@ -124,3 +124,23 @@ func (s *DockerService) pullImages() {
 	logger.Println("Finish pulling images")
 	s.ImagePullRunning = false
 }
+
+// StartContainer starts the container
+func (s *DockerService) StartContainer(containerID string) bool {
+	err := s.client.ContainerStart(context.Background(), containerID, types.ContainerStartOptions{})
+	if err != nil {
+		logger.Println(err)
+		return false
+	}
+	return true
+}
+
+// StopContainer stops the container
+func (s *DockerService) StopContainer(containerID string) bool {
+	err := s.client.ContainerStop(context.Background(), containerID, nil)
+	if err != nil {
+		logger.Println(err)
+		return false
+	}
+	return true
+}
