@@ -62,9 +62,9 @@ class Container extends Component {
                         <Typography variant="body1" >{this.props.container.name}</Typography>
                         {
                             this.props.container.state==='running' ?
-                            <Typography variant="body2" className={classes.running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStop(this.props.container.id)} title="Stop Container" color="default"><Stop /></IconButton></Typography>
+                            <Typography variant="body2" className={classes.running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStop(this.props.container)} title="Stop Container" color="default"><Stop /></IconButton></Typography>
                             :
-                            <Typography variant="body2" className={classes.not_running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStart(this.props.container.id)} title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>
+                            <Typography variant="body2" className={classes.not_running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStart(this.props.container)} title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>
                         }
                     </div>
                     <div>

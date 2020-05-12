@@ -4,6 +4,7 @@ import { Box, AppBar, Toolbar, IconButton, Typography, Button, Drawer, Badge } f
 import { List, ListItem, ListItemIcon, ListItemText } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider, withStyles } from '@material-ui/core/styles';
 import { ContainerGrid } from './components/container-grid/container-grid.component'
+import { ConfirmDialog } from './components/util/confirm-dialog.component'
 import CssBaseline from '@material-ui/core/CssBaseline';
 import MenuIcon from '@material-ui/icons/Menu';
 import UpdateIcon from '@material-ui/icons/Update';
@@ -36,11 +37,15 @@ class App extends Component {
   
   constructor() {
     super();
-    this.state = {containers: [], drawerOpen: false, updateCount: 0};
+    this.state = {containers: [], drawerOpen: false, updateCount: 0, showConfirmDialog: false, onConfirm: null, onConfirmParam: null};
     this.toggleDrawer = this.toggleDrawer.bind(this);
     this.startContainer = this.startContainer.bind(this);
     this.stopContainer = this.stopContainer.bind(this);
+    this.startContainerIfConfirmed = this.startContainerIfConfirmed.bind(this);
+    this.stopContainerIfConfirmed = this.stopContainerIfConfirmed.bind(this);
     this.showLoading = this.showLoading.bind(this);
+    this.closeConfirmDialog = this.closeConfirmDialog.bind(this);
+    this.onConfirmDialogYes = this.onConfirmDialogYes.bind(this);
   }
 
   toggleDrawer() {
@@ -96,6 +101,23 @@ class App extends Component {
       this.setState({containers: newcs})
   }
 
+  closeConfirmDialog() {
+    this.setState({showConfirmDialog: false, onConfirm: null, onConfirmParam: null});
+  }
+
+  onConfirmDialogYes() {
+    this.state.onConfirm(this.state.onConfirmParam);
+    this.setState({showConfirmDialog: false, onConfirm: null, onConfirmParam: null});
+  }
+
+  startContainerIfConfirmed(container) {
+    this.setState({showConfirmDialog: true, onConfirm: this.startContainer, onConfirmParam: container.id, confirmDialogText:'Do you really want to start ' + container.name + '?'});
+  }
+
+  stopContainerIfConfirmed(container) {
+    this.setState({showConfirmDialog: true, onConfirm: this.stopContainer, onConfirmParam: container.id, confirmDialogText:'Do you really want to stop ' + container.name + '?'});
+  }
+
   startContainer(id) {
     let this_ = this;
     this.showLoading(id);
@@ -139,41 +161,42 @@ class App extends Component {
   render() {
     const { classes } = this.props;
     return (
-      <ThemeProvider theme={darkTheme}>
-        <CssBaseline />
-        <AppBar position="static">
-          <Toolbar>
-            <IconButton edge="start" onClick={this.toggleDrawer} className={classes.menuButton} color="inherit" aria-label="menu">
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" className={classes.title}>
-              HomeDockyard
-            </Typography>
-            <Button color="inherit">
-              {
-                this.state.updateCount ?
-                <Badge badgeContent={this.state.updateCount} color="secondary">
-                  <UpdateIcon title={"" + this.state.updateCount + " Updates Available"} />
-                </Badge>
-                :
-                ""
-              }
-            </Button>
-          </Toolbar>
-        </AppBar>
-        <Drawer anchor='left' variant="persistent" open={this.state.drawerOpen}>
-          <List>
-            <ListItem button key='HomeDockyard'  onClick={this.toggleDrawer}>
-              <ListItemIcon><MenuOpenIcon /></ListItemIcon>
-              <ListItemText primary='HomeDockyard' />
-            </ListItem>
-        </List>
-        </Drawer>
-        <Box theme={darkTheme} className={classes.box} >
-          <ContainerGrid containers={this.state.containers} onContainerStart={this.startContainer} onContainerStop={this.stopContainer} />
-        </Box>
-      </ThemeProvider>
-    );
+        <ThemeProvider theme={darkTheme}>
+          <CssBaseline />
+          <AppBar position="static">
+            <Toolbar>
+              <IconButton edge="start" onClick={this.toggleDrawer} className={classes.menuButton} color="inherit" aria-label="menu">
+                <MenuIcon />
+              </IconButton>
+              <Typography variant="h6" className={classes.title}>
+                HomeDockyard
+              </Typography>
+              <Button color="inherit">
+                {
+                  this.state.updateCount ?
+                  <Badge badgeContent={this.state.updateCount} color="secondary">
+                    <UpdateIcon title={"" + this.state.updateCount + " Updates Available"} />
+                  </Badge>
+                  :
+                  ""
+                }
+              </Button>
+            </Toolbar>
+          </AppBar>
+          <Drawer anchor='left' variant="persistent" open={this.state.drawerOpen}>
+            <List>
+              <ListItem button key='HomeDockyard'  onClick={this.toggleDrawer}>
+                <ListItemIcon><MenuOpenIcon /></ListItemIcon>
+                <ListItemText primary='HomeDockyard' />
+              </ListItem>
+          </List>
+          </Drawer>
+          <Box theme={darkTheme} className={classes.box} >
+            <ContainerGrid containers={this.state.containers} onContainerStart={this.startContainerIfConfirmed} onContainerStop={this.stopContainerIfConfirmed} />
+          </Box>
+          <ConfirmDialog open={this.state.showConfirmDialog} text={this.state.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
+        </ThemeProvider>
+      );
     }
 }
 
