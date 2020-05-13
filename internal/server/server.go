@@ -31,6 +31,7 @@ type idJSON struct {
 	ID string `json:"id"`
 }
 
+//go:generate yarn --cwd ../../web build
 //go:generate broccoli -src ../../web/build -o public
 
 // Serv starts the HTTP server

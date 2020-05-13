@@ -64,7 +64,7 @@ class App extends Component {
   }
 
   fetchContainers() {
-    fetch("https://codetest.eranga.org/api/containers")
+    fetch("/api/containers")
     .then(response => response.json())
     .then(containers => {
       let updateCount = 0;
@@ -121,7 +121,8 @@ class App extends Component {
   startContainer(id) {
     let this_ = this;
     this.showLoading(id);
-    fetch('https://codetest.eranga.org/api/startcontainer', {
+    //fetch('https://codetest.eranga.org/api/startcontainer', {
+    fetch('/api/startcontainer', {
       method: 'post',
       headers: {
         'Accept': 'application/json',
@@ -141,7 +142,7 @@ class App extends Component {
   stopContainer(id) {
     let this_ = this;
     this.showLoading(id);
-    fetch('https://codetest.eranga.org/api/stopcontainer', {
+    fetch('/api/stopcontainer', {
       method: 'post',
       headers: {
         'Accept': 'application/json',
