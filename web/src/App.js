@@ -3,12 +3,15 @@ import './App.css';
 import { Box, AppBar, Toolbar, IconButton, Typography, Button, Drawer, Badge } from '@material-ui/core';
 import { List, ListItem, ListItemIcon, ListItemText } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider, withStyles } from '@material-ui/core/styles';
-import { ContainerGrid } from './components/container-grid/container-grid.component'
+import ContainerGrid from './components/container-grid/container-grid.component'
 import { ConfirmDialog } from './components/util/confirm-dialog.component'
 import CssBaseline from '@material-ui/core/CssBaseline';
 import MenuIcon from '@material-ui/icons/Menu';
 import UpdateIcon from '@material-ui/icons/Update';
 import MenuOpenIcon from '@material-ui/icons/MenuOpen';
+import { setContainersAndUpdateCount, setContainerLoading } from './redux/containers/containers.actions';
+import { connect } from 'react-redux';
+import { setConfirmDialog } from './redux/confirmdialog/confirmdialog.actions';
 
 const darkTheme = createMuiTheme({
   palette: {
@@ -37,13 +40,10 @@ class App extends Component {
   
   constructor() {
     super();
-    this.state = {containers: [], drawerOpen: false, updateCount: 0, showConfirmDialog: false, onConfirm: null, onConfirmParam: null};
+    this.state = {drawerOpen: false};
     this.toggleDrawer = this.toggleDrawer.bind(this);
     this.startContainer = this.startContainer.bind(this);
     this.stopContainer = this.stopContainer.bind(this);
-    this.startContainerIfConfirmed = this.startContainerIfConfirmed.bind(this);
-    this.stopContainerIfConfirmed = this.stopContainerIfConfirmed.bind(this);
-    this.showLoading = this.showLoading.bind(this);
     this.closeConfirmDialog = this.closeConfirmDialog.bind(this);
     this.onConfirmDialogYes = this.onConfirmDialogYes.bind(this);
   }
@@ -64,18 +64,8 @@ class App extends Component {
   }
 
   fetchContainers() {
-    fetch("/api/containers")
-    .then(response => response.json())
-    .then(containers => {
-      let updateCount = 0;
-      containers.map(container => {
-        if (container.updateAvailable) {
-          updateCount++;
-        }
-        return 1;
-      });
-      this.setState({containers, updateCount})
-    });
+    const { fetchContainers } = this.props;
+    fetchContainers();
   }
 
   quickRefresh() {
@@ -89,39 +79,22 @@ class App extends Component {
     }
   }
 
-  showLoading(id) {
-      let cs = this.state.containers;
-      let newcs = [];
-      cs.forEach(c => {
-        if (c.id===id) {
-          c.loading=true
-        }
-        newcs.push(c);
-      });
-      this.setState({containers: newcs})
-  }
-
   closeConfirmDialog() {
-    this.setState({showConfirmDialog: false, onConfirm: null, onConfirmParam: null});
+    this.props.setConfirmDialog(false, null, null, null)
   }
 
   onConfirmDialogYes() {
-    this.state.onConfirm(this.state.onConfirmParam);
-    this.setState({showConfirmDialog: false, onConfirm: null, onConfirmParam: null});
-  }
-
-  startContainerIfConfirmed(container) {
-    this.setState({showConfirmDialog: true, onConfirm: this.startContainer, onConfirmParam: container.id, confirmDialogText:'Do you really want to start ' + container.name + '?'});
-  }
-
-  stopContainerIfConfirmed(container) {
-    this.setState({showConfirmDialog: true, onConfirm: this.stopContainer, onConfirmParam: container.id, confirmDialogText:'Do you really want to stop ' + container.name + '?'});
+    switch(this.props.onConfirm) {
+      case 'START_CONTAINER' : this.startContainer(this.props.onConfirmParam); break;
+      case 'STOP_CONTAINER' : this.stopContainer(this.props.onConfirmParam); break;
+      default: break;
+    }
+    this.props.setConfirmDialog(false, null, null, null);
   }
 
   startContainer(id) {
     let this_ = this;
-    this.showLoading(id);
-    //fetch('https://codetest.eranga.org/api/startcontainer', {
+    this.props.setContainerLoading(id);
     fetch('/api/startcontainer', {
       method: 'post',
       headers: {
@@ -141,7 +114,7 @@ class App extends Component {
  
   stopContainer(id) {
     let this_ = this;
-    this.showLoading(id);
+    this.props.setContainerLoading(id);
     fetch('/api/stopcontainer', {
       method: 'post',
       headers: {
@@ -160,7 +133,7 @@ class App extends Component {
   }
  
   render() {
-    const { classes } = this.props;
+    const { classes, updateCount } = this.props;
     return (
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
@@ -174,9 +147,9 @@ class App extends Component {
               </Typography>
               <Button color="inherit">
                 {
-                  this.state.updateCount ?
-                  <Badge badgeContent={this.state.updateCount} color="secondary">
-                    <UpdateIcon title={"" + this.state.updateCount + " Updates Available"} />
+                  updateCount ?
+                  <Badge badgeContent={updateCount} color="secondary">
+                    <UpdateIcon title={"" + updateCount + " Updates Available"} />
                   </Badge>
                   :
                   ""
@@ -193,12 +166,44 @@ class App extends Component {
           </List>
           </Drawer>
           <Box theme={darkTheme} className={classes.box} >
-            <ContainerGrid containers={this.state.containers} onContainerStart={this.startContainerIfConfirmed} onContainerStop={this.stopContainerIfConfirmed} />
+            <ContainerGrid />
           </Box>
-          <ConfirmDialog open={this.state.showConfirmDialog} text={this.state.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
+          <ConfirmDialog open={this.props.showConfirmDialog} text={this.props.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
         </ThemeProvider>
       );
     }
 }
 
-export default withStyles(useStyles)(App)
+const AppWithStyles = withStyles(useStyles)(App);
+
+const mapDispatchToProps = dispatch => ({
+  fetchContainers: () => {
+    fetch("/api/containers")
+    .then(response => response.json())
+    .then(containers => {
+      let updateCount = 0;
+      containers.map(container => {
+        if (container.updateAvailable) {
+          updateCount++;
+        }
+        return 1;
+      });
+      dispatch(setContainersAndUpdateCount(containers, updateCount));
+    });
+  },
+
+  setContainerLoading: id => dispatch(setContainerLoading(id)),
+  setConfirmDialog: (showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText) => dispatch(setConfirmDialog(showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText))
+
+});
+
+const mapStateToProps = state => ({
+  containers: state.containers.containers,
+  updateCount: state.containers.updateCount,
+  showConfirmDialog: state.confirmDialog.showConfirmDialog, 
+  onConfirm: state.confirmDialog.onConfirm,
+  onConfirmParam: state.confirmDialog.onConfirmParam,
+  confirmDialogText: state.confirmDialog.confirmDialogText
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(AppWithStyles);

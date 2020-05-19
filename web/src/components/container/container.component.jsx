@@ -3,6 +3,8 @@ import './container.component.css'
 import { Grid, Paper, Typography, IconButton, Tooltip, CircularProgress } from '@material-ui/core';
 import { Stop, PlayArrow, Update } from '@material-ui/icons';
 import { withStyles } from '@material-ui/core/styles';
+import { setConfirmDialog } from '../../redux/confirmdialog/confirmdialog.actions';
+import { connect } from 'react-redux';
 
 const useStyles = theme => ({
     paper: {
@@ -31,9 +33,17 @@ class Container extends Component {
     componentDidUpdate(prevProps) {
     }
     
+    onStart = container => {
+        this.props.setConfirmDialog(true, 'START_CONTAINER', container.id, 'Do you really want to start ' + container.name + '?');
+    };
+
+    onStop = container => {
+        this.props.setConfirmDialog(true, 'STOP_CONTAINER', container.id, 'Do you really want to stop ' + container.name + '?');
+    };
+
     render() {
         const { classes } = this.props;
-        if (this.props.container.loading) {
+        if (this.props.loading) {
             return (
                 <Grid item>
                     <Paper elevation={2} className={classes.paper}>
@@ -62,9 +72,9 @@ class Container extends Component {
                         <Typography variant="body1" >{this.props.container.name}</Typography>
                         {
                             this.props.container.state==='running' ?
-                            <Typography variant="body2" className={classes.running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStop(this.props.container)} title="Stop Container" color="default"><Stop /></IconButton></Typography>
+                            <Typography variant="body2" className={classes.running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.onStop(this.props.container)} title="Stop Container" color="default"><Stop /></IconButton></Typography>
                             :
-                            <Typography variant="body2" className={classes.not_running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.props.onStart(this.props.container)} title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>
+                            <Typography variant="body2" className={classes.not_running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.onStart(this.props.container)} title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>
                         }
                     </div>
                     <div>
@@ -78,4 +88,11 @@ class Container extends Component {
         )
     }
 }
-export default withStyles(useStyles)(Container)
+
+const ContainerWithStyles = withStyles(useStyles)(Container)
+
+const mapDispatchToProps = dispatch => ({
+    setConfirmDialog: (showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText) => dispatch(setConfirmDialog(showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText))
+});
+  
+export default connect(null, mapDispatchToProps)(ContainerWithStyles);
