@@ -3,13 +3,18 @@ package dockerservice
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
+
+const DockerComposePath = "/home/coder/go/bin/docker-compose"
 
 // DockerService contains the Docker API client code
 type DockerService struct {
@@ -27,9 +32,19 @@ type Container struct {
 	UpdateAvailable bool   `json:"updateAvailable"`
 	//Ports     []types.Port
 	//Labels    map[string]string
-	State  string `json:"state"`
-	Status string `json:"status"`
-	Icon   string `json:"icon"`
+	State       string      `json:"state"`
+	Status      string      `json:"status"`
+	Icon        string      `json:"icon"`
+	ComposeData ComposeData `json:"composeData"`
+}
+
+// ComposeData holds values of docker-compose labels
+type ComposeData struct {
+	Service      string `json:"service"`
+	Project      string `json:"project"`
+	ConfigFiles  string `json:"config_files"`
+	WorkingDir   string `json:"working_dir"`
+	ConfigExists bool   `json:"configExists"`
 }
 
 // Init Initiates Docker connection
@@ -66,6 +81,14 @@ func (s *DockerService) Containers() []Container {
 
 		iIns, _, err := s.client.ImageInspectWithRaw(context.Background(), imageName)
 
+		composeData := getComposeData(container.Labels)
+
+		if composeData.ConfigFiles != "" {
+			if _, err := os.Stat(composeData.WorkingDir + "/" + composeData.ConfigFiles); err == nil {
+				composeData.ConfigExists = true
+			}
+		}
+
 		result[i] = Container{
 			ID:              container.ID,
 			Name:            name,
@@ -75,6 +98,7 @@ func (s *DockerService) Containers() []Container {
 			State:  container.State,
 			Status: container.Status,
 			//Ports:     container.Ports,
+			ComposeData: composeData,
 		}
 	}
 
@@ -143,4 +167,64 @@ func (s *DockerService) StopContainer(containerID string) bool {
 		return false
 	}
 	return true
+}
+
+// UpdateContainer updates the container with the latest image
+func (s *DockerService) UpdateContainer(containerID string, c chan string) {
+	cIns, err := s.client.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		c <- "Error"
+		panic(err)
+	}
+	composeData := getComposeData(cIns.Config.Labels)
+
+	var composeFile string
+	if strings.HasPrefix(composeData.ConfigFiles, composeData.WorkingDir) {
+		composeFile = composeData.ConfigFiles
+	} else {
+		composeFile = fmt.Sprintf("%s/%s", composeData.WorkingDir, composeData.ConfigFiles)
+	}
+
+	c <- fmt.Sprintf("Stopping service %s... ", composeData.Service)
+
+	// docker-compose -f docker-compose.yml -f docker-compose.admin.yml run backup_db
+	runCommand(DockerComposePath, "-f", composeFile, "stop", composeData.Service)
+
+	c <- fmt.Sprintf("done.,\nRemoving service %s... ", composeData.Service)
+	time.Sleep(2 * time.Second)
+	//runCommand(DockerComposePath, "-f", composeFile, "rm", "-f", composeData.Service)
+
+	c <- fmt.Sprintf("done.,\nStarting service %s with the latest image... ", composeData.Service)
+	time.Sleep(2 * time.Second)
+	//runCommand(DockerComposePath, "-f", composeFile, "up", "-d", composeData.Service)
+	runCommand(DockerComposePath, "-f", composeFile, "start", composeData.Service)
+	c <- "done."
+}
+
+func runCommand(name string, arg ...string) {
+	cmd := exec.Command(name, arg...)
+	stdout, err := cmd.Output()
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	logger.Println(string(stdout))
+}
+
+func getComposeData(labels map[string]string) ComposeData {
+	var composeData ComposeData
+	for label, labelVal := range labels {
+		switch label {
+		case "com.docker.compose.service":
+			composeData.Service = labelVal
+		case "com.docker.compose.project":
+			composeData.Project = labelVal
+		case "com.docker.compose.project.config_files":
+			composeData.ConfigFiles = labelVal
+		case "com.docker.compose.project.working_dir":
+			composeData.WorkingDir = labelVal
+		}
+	}
+	return composeData
 }

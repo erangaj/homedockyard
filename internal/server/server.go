@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/erangaj/homedockyard/pkg/dockerservice"
 	"github.com/gorilla/mux"
@@ -45,6 +46,7 @@ func Serv(ds *dockerservice.DockerService, prod bool) {
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
 	router.PathPrefix("/api/startcontainer").HandlerFunc(rs.startcontainer).Methods("POST")
 	router.PathPrefix("/api/stopcontainer").HandlerFunc(rs.stopcontainer).Methods("POST")
+	router.PathPrefix("/api/updatecontainer").HandlerFunc(rs.updatecontainer).Methods("GET")
 	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	// router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
@@ -111,6 +113,37 @@ func (rs *restService) stopcontainer(w http.ResponseWriter, r *http.Request) {
 	}
 	rs.ds.StopContainer(idjson.ID)
 	fmt.Fprint(w, "{\"result\":\"success\"}")
+}
+
+func (rs *restService) updatecontainer(w http.ResponseWriter, r *http.Request) {
+	// decoder := json.NewDecoder(r.Body)
+	// var idjson idJSON
+	// err := decoder.Decode(&idjson)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//rs.ds.UpdateContainer(r.URL.Query().Get("id"))
+
+	c := make(chan string, 4)
+	go rs.ds.UpdateContainer(r.URL.Query().Get("id"), c)
+
+Loop:
+	for i := 0; i < 4; i++ {
+		select {
+		case msg := <-c:
+			if msg == "Error" {
+				fmt.Fprint(w, "Error: Operation Failed.")
+				w.(http.Flusher).Flush()
+				break Loop
+			} else {
+				fmt.Fprint(w, msg)
+				w.(http.Flusher).Flush()	
+			}
+		case <-time.After(60 * time.Second):
+			fmt.Fprint(w, "Error: Operation Timed Out.")
+			w.(http.Flusher).Flush()
+		}
+	}
 }
 
 func (rs *restService) staticFile(w http.ResponseWriter, r *http.Request) { //TODO: use br.Serve
