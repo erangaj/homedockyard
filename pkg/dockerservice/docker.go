@@ -173,7 +173,7 @@ func (s *DockerService) StopContainer(containerID string) bool {
 func (s *DockerService) UpdateContainer(containerID string, c chan string) {
 	cIns, err := s.client.ContainerInspect(context.Background(), containerID)
 	if err != nil {
-		c <- "Error"
+		c <- "Error!"
 		panic(err)
 	}
 	composeData := getComposeData(cIns.Config.Labels)

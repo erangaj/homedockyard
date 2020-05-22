@@ -5,6 +5,7 @@ import { List, ListItem, ListItemIcon, ListItemText } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider, withStyles } from '@material-ui/core/styles';
 import ContainerGrid from './components/container-grid/container-grid.component'
 import { ConfirmDialog } from './components/util/confirm-dialog.component'
+import { InfoDialog } from './components/util/info-dialog.component'
 import CssBaseline from '@material-ui/core/CssBaseline';
 import MenuIcon from '@material-ui/icons/Menu';
 import UpdateIcon from '@material-ui/icons/Update';
@@ -40,7 +41,7 @@ class App extends Component {
   
   constructor() {
     super();
-    this.state = {drawerOpen: false};
+    this.state = {drawerOpen: false, showInfoDialog: false, infoDialogText:"", infoDialogCompleted: 0, infoDialogError: false};
     this.toggleDrawer = this.toggleDrawer.bind(this);
     this.startContainer = this.startContainer.bind(this);
     this.stopContainer = this.stopContainer.bind(this);
@@ -83,10 +84,13 @@ class App extends Component {
     this.props.setConfirmDialog(false, null, null, null)
   }
 
+  closeInfoDialog = () => this.setState({showInfoDialog: false, infoDialogText:"", infoDialogCompleted: 0, infoDialogError: false});
+
   onConfirmDialogYes() {
     switch(this.props.onConfirm) {
-      case 'START_CONTAINER' : this.startContainer(this.props.onConfirmParam); break;
-      case 'STOP_CONTAINER' : this.stopContainer(this.props.onConfirmParam); break;
+      case 'START_CONTAINER': this.startContainer(this.props.onConfirmParam); break;
+      case 'STOP_CONTAINER': this.stopContainer(this.props.onConfirmParam); break;
+      case 'UPDATE_CONTAINER': this.updateContainer(this.props.onConfirmParam); break;
       default: break;
     }
     this.props.setConfirmDialog(false, null, null, null);
@@ -131,6 +135,49 @@ class App extends Component {
       this_.intervalID = setInterval(this.quickRefresh.bind(this), 10000);
     });
   }
+
+  updateContainer = id => {
+    this.props.setContainerLoading(id);
+    let status = "";
+    let completed = 0;
+    let this_ = this;
+    this.setState({showInfoDialog: true, infoDialogText:status, infoDialogCompleted: completed, infoDialogError: false});
+    fetch('/api/updatecontainer', {
+      method: 'post',
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        id: id
+      })
+    })
+    .then(response => {
+      const reader = response.body.getReader();
+      reader.read().then(function processText({ done, value }) {
+        if (done) {
+          if (status.includes("Error!")) {
+            status += "\n\nUpgrade Failed!";
+            completed = 100;
+            this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: true});
+          } else {
+            status += "\n\nUpgrade Completed!";
+            completed = 100;
+            this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: false});
+          }
+          this_.props.setContainerLoading(id);
+          clearInterval(this_.intervalID);
+          this_.quickRefreshCount = 0;
+          this_.intervalID = setInterval(this_.quickRefresh.bind(this_), 10000);
+          return;
+        }
+        var textContent = String.fromCharCode.apply(null, value);
+        status += textContent;
+        completed += 25;
+        this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: false});
+        return reader.read().then(processText);
+      });
+    });
+  }
  
   render() {
     const { classes, updateCount } = this.props;
@@ -169,6 +216,7 @@ class App extends Component {
             <ContainerGrid />
           </Box>
           <ConfirmDialog open={this.props.showConfirmDialog} text={this.props.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
+          <InfoDialog open={this.state.showInfoDialog} text={this.state.infoDialogText} title="Upgrading Container" onClose={this.closeInfoDialog} completed={this.state.infoDialogCompleted} error={this.state.infoDialogError} />
         </ThemeProvider>
       );
     }

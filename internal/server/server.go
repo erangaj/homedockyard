@@ -46,7 +46,7 @@ func Serv(ds *dockerservice.DockerService, prod bool) {
 	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
 	router.PathPrefix("/api/startcontainer").HandlerFunc(rs.startcontainer).Methods("POST")
 	router.PathPrefix("/api/stopcontainer").HandlerFunc(rs.stopcontainer).Methods("POST")
-	router.PathPrefix("/api/updatecontainer").HandlerFunc(rs.updatecontainer).Methods("GET")
+	router.PathPrefix("/api/updatecontainer").HandlerFunc(rs.updatecontainer).Methods("POST")
 	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	// router.PathPrefix("/{path}").HandlerFunc(rs.staticFile).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
@@ -116,16 +116,15 @@ func (rs *restService) stopcontainer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs *restService) updatecontainer(w http.ResponseWriter, r *http.Request) {
-	// decoder := json.NewDecoder(r.Body)
-	// var idjson idJSON
-	// err := decoder.Decode(&idjson)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//rs.ds.UpdateContainer(r.URL.Query().Get("id"))
+	decoder := json.NewDecoder(r.Body)
+	var idjson idJSON
+	err := decoder.Decode(&idjson)
+	if err != nil {
+		panic(err)
+	}
 
 	c := make(chan string, 4)
-	go rs.ds.UpdateContainer(r.URL.Query().Get("id"), c)
+	go rs.ds.UpdateContainer(idjson.ID, c)
 
 Loop:
 	for i := 0; i < 4; i++ {
@@ -137,7 +136,7 @@ Loop:
 				break Loop
 			} else {
 				fmt.Fprint(w, msg)
-				w.(http.Flusher).Flush()	
+				w.(http.Flusher).Flush()
 			}
 		case <-time.After(60 * time.Second):
 			fmt.Fprint(w, "Error: Operation Timed Out.")
