@@ -155,14 +155,14 @@ class App extends Component {
       const reader = response.body.getReader();
       reader.read().then(function processText({ done, value }) {
         if (done) {
-          if (status.includes("Error!")) {
-            status += "\n\nUpgrade Failed!";
-            completed = 100;
-            this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: true});
-          } else {
+          if (status.includes("Success!")) {
             status += "\n\nUpgrade Completed!";
             completed = 100;
             this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: false});
+          } else {
+            status += "\n\nUpgrade Failed!";
+            completed = 100;
+            this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: true});
           }
           this_.props.setContainerLoading(id);
           clearInterval(this_.intervalID);

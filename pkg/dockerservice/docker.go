@@ -14,7 +14,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
-const DockerComposePath = "/home/coder/go/bin/docker-compose"
+const dockerComposePath = "/usr/local/bin/docker-compose"
 
 // DockerService contains the Docker API client code
 type DockerService struct {
@@ -68,7 +68,8 @@ func (s *DockerService) Containers() []Container {
 	for i, container := range containers {
 		cIns, err := s.client.ContainerInspect(context.Background(), container.ID)
 		if err != nil {
-			panic(err)
+			log.Printf(err.Error())
+			continue
 		}
 
 		var name string
@@ -110,9 +111,8 @@ func (s *DockerService) StartImagePull() string {
 	if !s.ImagePullRunning {
 		go s.pullImages()
 		return "started"
-	} else {
-		return "already running"
 	}
+	return "already running"
 }
 
 // Close closes Docker connection
@@ -188,17 +188,17 @@ func (s *DockerService) UpdateContainer(containerID string, c chan string) {
 	c <- fmt.Sprintf("Stopping service %s... ", composeData.Service)
 
 	// docker-compose -f docker-compose.yml -f docker-compose.admin.yml run backup_db
-	runCommand(DockerComposePath, "-f", composeFile, "stop", composeData.Service)
+	runCommand(dockerComposePath, "-f", composeFile, "stop", composeData.Service)
 
 	c <- fmt.Sprintf("done.,\nRemoving service %s... ", composeData.Service)
 	time.Sleep(2 * time.Second)
-	//runCommand(DockerComposePath, "-f", composeFile, "rm", "-f", composeData.Service)
+	runCommand(dockerComposePath, "-f", composeFile, "rm", "-f", composeData.Service)
 
 	c <- fmt.Sprintf("done.,\nStarting service %s with the latest image... ", composeData.Service)
 	time.Sleep(2 * time.Second)
-	//runCommand(DockerComposePath, "-f", composeFile, "up", "-d", composeData.Service)
-	runCommand(DockerComposePath, "-f", composeFile, "start", composeData.Service)
-	c <- "done."
+	runCommand(dockerComposePath, "-f", composeFile, "up", "-d", composeData.Service)
+	//runCommand(dockerComposePath, "-f", composeFile, "start", composeData.Service)
+	c <- "done.\nSuccess!"
 }
 
 func runCommand(name string, arg ...string) {
