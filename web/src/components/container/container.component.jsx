@@ -41,16 +41,16 @@ class Container extends Component {
     }
     
     onStart = () => {
-        this.props.setConfirmDialog(true, 'START_CONTAINER', this.props.container.id, 'Do you really want to start ' + this.props.container.name + '?');
+        this.props.setConfirmDialog(true, 'START_CONTAINER', this.props.container, 'Do you really want to start ' + this.props.container.name + '?');
     };
 
     onStop = () => {
-        this.props.setConfirmDialog(true, 'STOP_CONTAINER', this.props.container.id, 'Do you really want to stop ' + this.props.container.name + '?');
+        this.props.setConfirmDialog(true, 'STOP_CONTAINER', this.props.container, 'Do you really want to stop ' + this.props.container.name + '?');
     };
 
     onUpdate = e => {
         if(this.props.container.composeData.configExists) {
-            this.props.setConfirmDialog(true, 'UPDATE_CONTAINER', this.props.container.id, 'Do you really want to update ' + this.props.container.name + ' to the latest version?');
+            this.props.setConfirmDialog(true, 'UPDATE_CONTAINER', this.props.container, 'Do you really want to update ' + this.props.container.name + ' to the latest version?');
         } else {
             this.setState({popoverOpen: true, popoverAnchorEl:e.currentTarget});
         }

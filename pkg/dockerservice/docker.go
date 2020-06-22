@@ -20,6 +20,8 @@ const dockerComposePath = "/usr/local/bin/docker-compose"
 type DockerService struct {
 	ImagePullRunning bool
 	client           *client.Client
+	ID               int
+	Name             string
 }
 
 var logger = log.New(os.Stderr, "", log.LstdFlags)
@@ -36,6 +38,7 @@ type Container struct {
 	Status      string      `json:"status"`
 	Icon        string      `json:"icon"`
 	ComposeData ComposeData `json:"composeData"`
+	InstanceID  int         `json:"instanceID"`
 }
 
 // ComposeData holds values of docker-compose labels
@@ -47,9 +50,18 @@ type ComposeData struct {
 	ConfigExists bool   `json:"configExists"`
 }
 
-// Init Initiates Docker connection
-func (s *DockerService) Init() {
+// InitLocal Initiates Docker connection
+func (s *DockerService) InitLocal() {
 	cli, err := client.NewEnvClient()
+	s.client = cli
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Init Initiates Docker connection
+func (s *DockerService) Init(url string) {
+	cli, err := client.NewClient(url, "", nil, nil)
 	s.client = cli
 	if err != nil {
 		panic(err)
@@ -100,6 +112,7 @@ func (s *DockerService) Containers() []Container {
 			Status: container.Status,
 			//Ports:     container.Ports,
 			ComposeData: composeData,
+			InstanceID:  s.ID,
 		}
 	}
 

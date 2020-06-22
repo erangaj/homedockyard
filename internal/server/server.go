@@ -24,26 +24,28 @@ var (
 )
 
 type restService struct {
-	ds   *dockerservice.DockerService
+	dss  *[]dockerservice.DockerService
 	prod bool
 }
 
 type idJSON struct {
-	ID string `json:"id"`
+	ID         string `json:"id"`
+	InstanceID int    `json:"instanceID"`
 }
 
 //go:generate yarn --cwd ../../web build
 //go:generate broccoli -src ../../web/build -o public
 
 // Serv starts the HTTP server
-func Serv(ds *dockerservice.DockerService, prod bool) {
-	rs := restService{ds: ds, prod: prod}
+func Serv(dss *[]dockerservice.DockerService, prod bool) {
+	rs := restService{dss: dss, prod: prod}
 
 	router := mux.NewRouter()
 	router.Use(commonMiddleware)
 
+	router.PathPrefix("/api/instances").HandlerFunc(rs.instances).Methods("GET")
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
-	router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
+	// router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
 	router.PathPrefix("/api/startcontainer").HandlerFunc(rs.startcontainer).Methods("POST")
 	router.PathPrefix("/api/stopcontainer").HandlerFunc(rs.stopcontainer).Methods("POST")
 	router.PathPrefix("/api/updatecontainer").HandlerFunc(rs.updatecontainer).Methods("POST")
@@ -52,7 +54,9 @@ func Serv(ds *dockerservice.DockerService, prod bool) {
 	router.PathPrefix("/").HandlerFunc(rs.staticFile).Methods("GET")
 	log.Fatal(http.ListenAndServe(":9080", router))
 
-	ds.Close()
+	for _, ds := range *dss {
+		ds.Close()
+	}
 }
 
 func commonMiddleware(next http.Handler) http.Handler {
@@ -76,9 +80,22 @@ func commonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (rs *restService) instances(w http.ResponseWriter, r *http.Request) {
+	ins := make([]idJSON, 0)
+	for _, ds := range *rs.dss {
+		it := idJSON{InstanceID: ds.ID, ID: ds.Name}
+		ins = append(ins, it)
+	}
+	if err := json.NewEncoder(w).Encode(ins); err != nil {
+		panic(err)
+	}
+}
+
 func (rs *restService) containers(w http.ResponseWriter, r *http.Request) {
-	ds := rs.ds
-	cs := ds.Containers()
+	cs := make([]dockerservice.Container, 0)
+	for _, ds := range *rs.dss {
+		cs = append(cs, ds.Containers()...)
+	}
 
 	cs = updateIcon(cs)
 
@@ -87,11 +104,11 @@ func (rs *restService) containers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
+/*func (rs *restService) pullimages(w http.ResponseWriter, r *http.Request) {
 	ds := rs.ds
 	res := ds.StartImagePull()
 	fmt.Fprintf(w, res)
-}
+}*/
 
 func (rs *restService) startcontainer(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
@@ -100,7 +117,8 @@ func (rs *restService) startcontainer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	rs.ds.StartContainer(idjson.ID)
+	dss := *rs.dss
+	dss[idjson.InstanceID].StartContainer(idjson.ID)
 	fmt.Fprint(w, "{\"result\":\"success\"}")
 }
 
@@ -111,7 +129,8 @@ func (rs *restService) stopcontainer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	rs.ds.StopContainer(idjson.ID)
+	dss := *rs.dss
+	dss[idjson.InstanceID].StopContainer(idjson.ID)
 	fmt.Fprint(w, "{\"result\":\"success\"}")
 }
 
@@ -124,7 +143,8 @@ func (rs *restService) updatecontainer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := make(chan string, 4)
-	go rs.ds.UpdateContainer(idjson.ID, c)
+	dss := *rs.dss
+	go dss[idjson.InstanceID].UpdateContainer(idjson.ID, c)
 
 Loop:
 	for i := 0; i < 4; i++ {

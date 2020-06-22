@@ -1,18 +1,20 @@
 import React, { Component } from 'react';
 import './App.css';
-import { Box, AppBar, Toolbar, IconButton, Typography, Button, Drawer, Badge } from '@material-ui/core';
+import { Box, Button, Drawer, Badge } from '@material-ui/core';
 import { List, ListItem, ListItemIcon, ListItemText } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider, withStyles } from '@material-ui/core/styles';
 import ContainerGrid from './components/container-grid/container-grid.component'
 import { ConfirmDialog } from './components/util/confirm-dialog.component'
 import { InfoDialog } from './components/util/info-dialog.component'
 import CssBaseline from '@material-ui/core/CssBaseline';
-import MenuIcon from '@material-ui/icons/Menu';
 import UpdateIcon from '@material-ui/icons/Update';
-import MenuOpenIcon from '@material-ui/icons/MenuOpen';
+import MenuIcon from '@material-ui/icons/Menu';
 import { setContainersAndUpdateCount, setContainerLoading } from './redux/containers/containers.actions';
 import { connect } from 'react-redux';
 import { setConfirmDialog } from './redux/confirmdialog/confirmdialog.actions';
+import { setEndpoints, selectEndpoint } from './redux/endpoints/endpoints.actions';
+import Icon from '@mdi/react'
+import { mdiDocker } from '@mdi/js'
 
 const darkTheme = createMuiTheme({
   palette: {
@@ -26,6 +28,7 @@ const useStyles = theme => ({
   },
   box: {
     padding: theme.spacing(2),
+    marginLeft: theme.spacing(35)
   },
   menuButton: {
     marginRight: theme.spacing(2),
@@ -56,12 +59,19 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.fetchEndpoints();
     this.fetchContainers();
     this.intervalID = setInterval(this.fetchContainers.bind(this), 60000);
   }
 
   componentWillUnmount() {
     clearInterval(this.intervalID);
+
+  }
+
+  fetchEndpoints = () => {
+    const { fetchEndpoints } = this.props;
+    fetchEndpoints();
   }
 
   fetchContainers() {
@@ -96,16 +106,17 @@ class App extends Component {
     this.props.setConfirmDialog(false, null, null, null);
   }
 
-  startContainer(id) {
+  startContainer(c) {
     let this_ = this;
-    this.props.setContainerLoading(id);
+    this.props.setContainerLoading(c.id);
     fetch('/api/startcontainer', {
       method: 'post',
       headers: {
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        id: id
+        id: c.id,
+        instanceID: c.instanceID
       })
     })
     .then(response => response.json())
@@ -116,16 +127,18 @@ class App extends Component {
     });
   }
  
-  stopContainer(id) {
+  stopContainer(c) {
     let this_ = this;
-    this.props.setContainerLoading(id);
+    console.log(c.instanceID)
+    this.props.setContainerLoading(c.id);
     fetch('/api/stopcontainer', {
       method: 'post',
       headers: {
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        id: id
+        id: c.id,
+        instanceID: c.instanceID
       })
     })
     .then(response => response.json())
@@ -136,8 +149,8 @@ class App extends Component {
     });
   }
 
-  updateContainer = id => {
-    this.props.setContainerLoading(id);
+  updateContainer = c => {
+    this.props.setContainerLoading(c.id);
     let status = "";
     let completed = 0;
     let this_ = this;
@@ -148,7 +161,8 @@ class App extends Component {
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        id: id
+        id: c.id,
+        instanceID: c.instanceID
       })
     })
     .then(response => {
@@ -164,7 +178,7 @@ class App extends Component {
             completed = 100;
             this_.setState({infoDialogText:status, infoDialogCompleted: completed, infoDialogError: true});
           }
-          this_.props.setContainerLoading(id);
+          this_.props.setContainerLoading(c.id);
           clearInterval(this_.intervalID);
           this_.quickRefreshCount = 0;
           this_.intervalID = setInterval(this_.quickRefresh.bind(this_), 10000);
@@ -180,39 +194,46 @@ class App extends Component {
   }
  
   render() {
-    const { classes, updateCount } = this.props;
+    const { classes, updateCount, endpoints, selectEndpoint } = this.props;
     return (
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
-          <AppBar position="static">
-            <Toolbar>
-              <IconButton edge="start" onClick={this.toggleDrawer} className={classes.menuButton} color="inherit" aria-label="menu">
-                <MenuIcon />
-              </IconButton>
-              <Typography variant="h6" className={classes.title}>
-                HomeDockyard
-              </Typography>
-              <Button color="inherit">
-                {
-                  updateCount ?
-                  <Badge badgeContent={updateCount} color="secondary">
-                    <UpdateIcon title={"" + updateCount + " Updates Available"} />
-                  </Badge>
-                  :
-                  ""
-                }
-              </Button>
-            </Toolbar>
-          </AppBar>
-          <Drawer anchor='left' variant="persistent" open={this.state.drawerOpen}>
+          <Drawer anchor='left' variant="permanent" open={this.state.drawerOpen}>
             <List>
               <ListItem button key='HomeDockyard'  onClick={this.toggleDrawer}>
-                <ListItemIcon><MenuOpenIcon /></ListItemIcon>
+                <ListItemIcon><MenuIcon /></ListItemIcon>
                 <ListItemText primary='HomeDockyard' />
               </ListItem>
-          </List>
+              { endpoints.map((ep) => (
+                <ListItem button key={ep.instanceID} onClick={() => selectEndpoint(ep)} >
+                  <ListItemIcon><Icon path={mdiDocker} title="Docker Connection" size={1} /></ListItemIcon>
+                  <ListItemText primary={ep.id} />
+                  <Button color="inherit">
+              {
+                updateCount ?
+                <Badge badgeContent={updateCount} color="secondary">
+                  <UpdateIcon title={"" + updateCount + " Updates Available"} />
+                </Badge>
+                :
+                ""
+              }
+            </Button>
+                </ListItem>
+              ))}
+            </List>
+
           </Drawer>
           <Box theme={darkTheme} className={classes.box} >
+            <Button color="inherit">
+              {
+                updateCount ?
+                <Badge badgeContent={updateCount} color="secondary">
+                  <UpdateIcon title={"" + updateCount + " Updates Available"} />
+                </Badge>
+                :
+                ""
+              }
+            </Button>
             <ContainerGrid />
           </Box>
           <ConfirmDialog open={this.props.showConfirmDialog} text={this.props.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
@@ -225,6 +246,16 @@ class App extends Component {
 const AppWithStyles = withStyles(useStyles)(App);
 
 const mapDispatchToProps = dispatch => ({
+  fetchEndpoints: () => {
+    fetch("/api/instances")
+    .then(response => response.json())
+    .then(endpoints => {
+      dispatch(setEndpoints(endpoints));
+      if (endpoints.length > 0) {
+        dispatch(selectEndpoint(endpoints[0]));
+      }
+    });
+  },
   fetchContainers: () => {
     fetch("/api/containers")
     .then(response => response.json())
@@ -241,6 +272,7 @@ const mapDispatchToProps = dispatch => ({
   },
 
   setContainerLoading: id => dispatch(setContainerLoading(id)),
+  selectEndpoint: endpoint => dispatch(selectEndpoint(endpoint)),
   setConfirmDialog: (showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText) => dispatch(setConfirmDialog(showConfirmDialog, onConfirm, onConfirmParam, confirmDialogText))
 
 });
@@ -251,7 +283,9 @@ const mapStateToProps = state => ({
   showConfirmDialog: state.confirmDialog.showConfirmDialog, 
   onConfirm: state.confirmDialog.onConfirm,
   onConfirmParam: state.confirmDialog.onConfirmParam,
-  confirmDialogText: state.confirmDialog.confirmDialogText
+  confirmDialogText: state.confirmDialog.confirmDialogText,
+  endpoints: state.endpoints.endpoints,
+  currentEndpoint: state.endpoints.currentEndpoint
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppWithStyles);
