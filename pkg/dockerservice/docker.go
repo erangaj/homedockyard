@@ -172,6 +172,16 @@ func (s *DockerService) StartContainer(containerID string) bool {
 	return true
 }
 
+// RestartContainer starts the container
+func (s *DockerService) RestartContainer(containerID string) bool {
+	err := s.client.ContainerRestart(context.Background(), containerID, nil)
+	if err != nil {
+		logger.Println(err)
+		return false
+	}
+	return true
+}
+
 // StopContainer stops the container
 func (s *DockerService) StopContainer(containerID string) bool {
 	err := s.client.ContainerStop(context.Background(), containerID, nil)

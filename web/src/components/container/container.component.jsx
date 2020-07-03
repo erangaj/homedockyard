@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import './container.component.css'
 import { Grid, Paper, Typography, IconButton, Tooltip, CircularProgress, Popover } from '@material-ui/core';
-import { Stop, PlayArrow, Update } from '@material-ui/icons';
+import { Stop, Replay, PlayArrow, Update } from '@material-ui/icons';
 import { withStyles } from '@material-ui/core/styles';
 import { setConfirmDialog } from '../../redux/confirmdialog/confirmdialog.actions';
 import { connect } from 'react-redux';
@@ -48,6 +48,10 @@ class Container extends Component {
         this.props.setConfirmDialog(true, 'STOP_CONTAINER', this.props.container, 'Do you really want to stop ' + this.props.container.name + '?');
     };
 
+    onRestart = () => {
+        this.props.setConfirmDialog(true, 'RESTART_CONTAINER', this.props.container, 'Do you really want to restart ' + this.props.container.name + '?');
+    };
+
     onUpdate = e => {
         if(this.props.container.composeData.configExists) {
             this.props.setConfirmDialog(true, 'UPDATE_CONTAINER', this.props.container, 'Do you really want to update ' + this.props.container.name + ' to the latest version?');
@@ -91,7 +95,12 @@ class Container extends Component {
                         <Typography variant="body1" >{this.props.container.name}</Typography>
                         {
                             this.props.container.state==='running' ?
-                            <Typography variant="body2" className={classes.running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.onStop()} title="Stop Container" color="default"><Stop /></IconButton></Typography>
+                            <span>
+                                <Typography variant="body2" className={classes.running}>{this.props.container.state}
+                                    <IconButton size="small" onClick={(e) => this.onStop()} title="Stop Container" color="default"><Stop /></IconButton>
+                                    <IconButton size="small" onClick={(e) => this.onRestart()} title="Restart Container" color="default"><Replay /></IconButton>
+                                </Typography>
+                            </span>
                             :
                             <Typography variant="body2" className={classes.not_running}>{this.props.container.state}<IconButton size="small" onClick={(e) => this.onStart()} title="Start Container" color="default" ><PlayArrow /></IconButton></Typography>
                         }

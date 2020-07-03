@@ -47,6 +47,7 @@ class App extends Component {
     this.state = {drawerOpen: false, showInfoDialog: false, infoDialogText:"", infoDialogCompleted: 0, infoDialogError: false};
     this.toggleDrawer = this.toggleDrawer.bind(this);
     this.startContainer = this.startContainer.bind(this);
+    this.restartContainer = this.restartContainer.bind(this);
     this.stopContainer = this.stopContainer.bind(this);
     this.closeConfirmDialog = this.closeConfirmDialog.bind(this);
     this.onConfirmDialogYes = this.onConfirmDialogYes.bind(this);
@@ -99,6 +100,7 @@ class App extends Component {
   onConfirmDialogYes() {
     switch(this.props.onConfirm) {
       case 'START_CONTAINER': this.startContainer(this.props.onConfirmParam); break;
+      case 'RESTART_CONTAINER': this.restartContainer(this.props.onConfirmParam); break;
       case 'STOP_CONTAINER': this.stopContainer(this.props.onConfirmParam); break;
       case 'UPDATE_CONTAINER': this.updateContainer(this.props.onConfirmParam); break;
       default: break;
@@ -110,6 +112,27 @@ class App extends Component {
     let this_ = this;
     this.props.setContainerLoading(c.id);
     fetch('/api/startcontainer', {
+      method: 'post',
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        id: c.id,
+        instanceID: c.instanceID
+      })
+    })
+    .then(response => response.json())
+    .then(result => {
+      clearInterval(this_.intervalID);
+      this_.quickRefreshCount = 0;
+      this_.intervalID = setInterval(this.quickRefresh.bind(this), 10000);
+    });
+  }
+ 
+  restartContainer(c) {
+    let this_ = this;
+    this.props.setContainerLoading(c.id);
+    fetch('/api/restartcontainer', {
       method: 'post',
       headers: {
         'Accept': 'application/json',

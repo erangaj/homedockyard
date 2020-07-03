@@ -1,8 +1,11 @@
-[ ] Combine instances and containers
+[*] Fix UI
+[*] Restart button
+[ ] Single endpoint mode
+[ ] Update remote
+[ ] Package with settings file
+
+[ ] Combine instances and containers APIs
 [ ] Make containers component
 [ ] Settings component
 [ ] Routing
-[*] Fix UI
-[ ] Restart button
 [ ] More icons
-[ ] Package with settings file

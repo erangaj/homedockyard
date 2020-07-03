@@ -47,6 +47,7 @@ func Serv(dss *[]dockerservice.DockerService, prod bool) {
 	router.PathPrefix("/api/containers").HandlerFunc(rs.containers).Methods("GET")
 	// router.PathPrefix("/api/pullimages").HandlerFunc(rs.pullimages).Methods("GET")
 	router.PathPrefix("/api/startcontainer").HandlerFunc(rs.startcontainer).Methods("POST")
+	router.PathPrefix("/api/restartcontainer").HandlerFunc(rs.restartcontainer).Methods("POST")
 	router.PathPrefix("/api/stopcontainer").HandlerFunc(rs.stopcontainer).Methods("POST")
 	router.PathPrefix("/api/updatecontainer").HandlerFunc(rs.updatecontainer).Methods("POST")
 	// router.PathPrefix("/{dir}/{path}").HandlerFunc(rs.staticFile).Methods("GET")
@@ -119,6 +120,18 @@ func (rs *restService) startcontainer(w http.ResponseWriter, r *http.Request) {
 	}
 	dss := *rs.dss
 	dss[idjson.InstanceID].StartContainer(idjson.ID)
+	fmt.Fprint(w, "{\"result\":\"success\"}")
+}
+
+func (rs *restService) restartcontainer(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var idjson idJSON
+	err := decoder.Decode(&idjson)
+	if err != nil {
+		panic(err)
+	}
+	dss := *rs.dss
+	dss[idjson.InstanceID].RestartContainer(idjson.ID)
 	fmt.Fprint(w, "{\"result\":\"success\"}")
 }
 
