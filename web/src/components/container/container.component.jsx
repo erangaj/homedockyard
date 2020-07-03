@@ -100,7 +100,7 @@ class Container extends Component {
                         {
                             this.props.container.updateAvailable ?
                             <div>
-                                <IconButton size="small" onClick={(e) => this.onUpdate(e)} title="Start Container" className='container-update-icon' color="default" >
+                                <IconButton size="small" onClick={(e) => this.onUpdate(e)} title="Update Container" className='container-update-icon' color="default" >
                                     <Update color="primary" title="Updates Available" />
                                 </IconButton>
                                 <Popover

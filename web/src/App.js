@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import { Box, Button, Drawer, Badge } from '@material-ui/core';
+import { AppBar, Tabs, Tab, Box, Button, Drawer, Badge } from '@material-ui/core';
 import { List, ListItem, ListItemIcon, ListItemText } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider, withStyles } from '@material-ui/core/styles';
 import ContainerGrid from './components/container-grid/container-grid.component'
@@ -27,8 +27,8 @@ const useStyles = theme => ({
     flexGrow: 1,
   },
   box: {
-    padding: theme.spacing(2),
-    marginLeft: theme.spacing(35)
+    padding: theme.spacing(0),
+    marginLeft: theme.spacing(25)
   },
   menuButton: {
     marginRight: theme.spacing(2),
@@ -192,9 +192,16 @@ class App extends Component {
       });
     });
   }
+
+  a11yProps = index => {
+    return {
+      id: `simple-tab-${index}`,
+      'aria-controls': `simple-tabpanel-${index}`,
+    };
+  }
  
   render() {
-    const { classes, updateCount, endpoints, selectEndpoint } = this.props;
+    const { classes, updateCount, endpoints, selectEndpoint, currentEndpoint } = this.props;
     return (
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
@@ -204,36 +211,28 @@ class App extends Component {
                 <ListItemIcon><MenuIcon /></ListItemIcon>
                 <ListItemText primary='HomeDockyard' />
               </ListItem>
-              { endpoints.map((ep) => (
-                <ListItem button key={ep.instanceID} onClick={() => selectEndpoint(ep)} >
+              <ListItem button key='Containers' onClick={() => {}} >
                   <ListItemIcon><Icon path={mdiDocker} title="Docker Connection" size={1} /></ListItemIcon>
-                  <ListItemText primary={ep.id} />
-                  <Button color="inherit">
-              {
-                updateCount ?
-                <Badge badgeContent={updateCount} color="secondary">
-                  <UpdateIcon title={"" + updateCount + " Updates Available"} />
-                </Badge>
-                :
-                ""
-              }
-            </Button>
+                  <ListItemText primary='Containers' />
                 </ListItem>
-              ))}
-            </List>
-
+              </List>
           </Drawer>
           <Box theme={darkTheme} className={classes.box} >
-            <Button color="inherit">
-              {
-                updateCount ?
-                <Badge badgeContent={updateCount} color="secondary">
-                  <UpdateIcon title={"" + updateCount + " Updates Available"} />
-                </Badge>
-                :
-                ""
-              }
-            </Button>
+            <AppBar position="static">
+              <Tabs value={currentEndpoint ? currentEndpoint : null} onChange={(event, newEp) => selectEndpoint(newEp)} aria-label="simple tabs example" variant="scrollable" scrollButtons="on">
+                { endpoints.map((ep) => {
+                  let updates = updateCount[ep.instanceID.toString()];
+                  if (!updates) {
+                    return (
+                      <Tab label={ <span>{ ep.id }</span> } value = {ep} {...this.a11yProps(0)} />
+                    )
+                  }
+                  return (
+                    <Tab label={ <span>{ ep.id } <Badge  badgeContent={updates} color="secondary"><UpdateIcon title={"" + updates + " Updates Available"} /></Badge></span> } value = {ep} {...this.a11yProps(0)} />
+                  )
+                })}
+              </Tabs>
+            </AppBar>
             <ContainerGrid />
           </Box>
           <ConfirmDialog open={this.props.showConfirmDialog} text={this.props.confirmDialogText} onClose={this.closeConfirmDialog} onYes={this.onConfirmDialogYes} />
@@ -260,10 +259,14 @@ const mapDispatchToProps = dispatch => ({
     fetch("/api/containers")
     .then(response => response.json())
     .then(containers => {
-      let updateCount = 0;
+      let updateCount = {};
       containers.map(container => {
         if (container.updateAvailable) {
-          updateCount++;
+          if (updateCount[container.instanceID]) {
+            updateCount[container.instanceID.toString()] = updateCount[container.instanceID.toString()] + 1;
+          } else {
+            updateCount[container.instanceID.toString()] = 1;
+          }
         }
         return 1;
       });

@@ -218,6 +218,20 @@ func updateIcon(cs []dockerservice.Container) []dockerservice.Container {
 	for i, c := range cs {
 		imageNameParts := strings.Split(c.ImageName, ":")
 		imageNameParts = strings.Split(imageNameParts[0], "/")
+		if len(imageNameParts) == 2 && ((imageNameParts[0] == "hassioaddons") || (imageNameParts[0] == "homeassistant" && strings.Contains(imageNameParts[1], "addon"))) {
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-amd64", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "amd64-", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-armv7", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "armv7-", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-armhf", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "armhf-", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-i386", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "i386-", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-aarch64", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "aarch64-", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "-addon", "")
+			imageNameParts[1] = strings.ReplaceAll(imageNameParts[1], "addon-", "")
+		}
 		if len(imageNameParts) > 1 {
 			if f, ok := icons[strings.ToLower(c.Name)]; ok {
 				c.Icon = f
