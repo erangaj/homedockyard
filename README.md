@@ -7,10 +7,10 @@ cc is a small web app for monitoring Docker containers. As the name suggests, Ho
 * Start/Stop containers
 * Show updates available
 * Update from UI
-** To enable this feature, please make sure the docker-compose YAML files are accessible to the HomeDockyard process. If you are using docker, please map the root directories(s) of you docker-compose files to the container to give the HomeDockyard process access the docker-compose files.
+  * To enable this feature the docker-compose YAML files must be accessible to the HomeDockyard process. If you are running HomeDockyard in a docker container, you may mount the root directories(s) of you docker-compose files as volume(s) to the container to give access the docker-compose files.
 
-Ex:
-docker run -v /docker/compose/files:/docker/compose/files -v /more/docker/compose/files:/more/docker/compose/files -v /var/run/docker.sock:/var/run/docker.sock erangaj/homedockyard
+Example:
+`docker run -v /docker/compose/files:/docker/compose/files -v /more/docker/compose/files:/more/docker/compose/files -v /var/run/docker.sock:/var/run/docker.sock erangaj/homedockyard`
 
 ##### Planned
 
@@ -36,7 +36,7 @@ services:
             - true
         volumes:
             - '/var/run/docker.sock:/var/run/docker.sock'
-            - '/docker/compose/files:/docker/compose/files' # Required to enable updating containers
+            - '/docker/compose/files:/docker/compose/files' # Required to update containers from UI
         container_name: homedockyard
         image: erangaj/homedockyard
 ```
