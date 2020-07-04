@@ -1,3 +1,4 @@
 homedockyard
 **/*.gen.go
 __debug_bin
+notes.txt
