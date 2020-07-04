@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/erangaj/homedockyard/internal/configservice"
 )
 
 const dockerComposePath = "/usr/local/bin/docker-compose"
@@ -22,6 +23,9 @@ type DockerService struct {
 	client           *client.Client
 	ID               int
 	Name             string
+	IsLocal          bool
+	URL              string
+	PathMappings     []configservice.PathMapping
 }
 
 var logger = log.New(os.Stderr, "", log.LstdFlags)
@@ -43,11 +47,11 @@ type Container struct {
 
 // ComposeData holds values of docker-compose labels
 type ComposeData struct {
-	Service      string `json:"service"`
-	Project      string `json:"project"`
-	ConfigFiles  string `json:"config_files"`
-	WorkingDir   string `json:"working_dir"`
-	ConfigExists bool   `json:"configExists"`
+	Service     string `json:"service"`
+	Project     string `json:"project"`
+	ConfigFiles string `json:"config_files"`
+	//WorkingDir   string `json:"working_dir"`
+	ConfigExists bool `json:"configExists"`
 }
 
 // InitLocal Initiates Docker connection
@@ -60,11 +64,15 @@ func (s *DockerService) InitLocal() {
 }
 
 // Init Initiates Docker connection
-func (s *DockerService) Init(url string) {
-	cli, err := client.NewClient(url, "", nil, nil)
-	s.client = cli
-	if err != nil {
-		panic(err)
+func (s *DockerService) Init() {
+	if s.IsLocal {
+		s.InitLocal()
+	} else {
+		cli, err := client.NewClient(s.URL, "", nil, nil)
+		s.client = cli
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -94,10 +102,10 @@ func (s *DockerService) Containers() []Container {
 
 		iIns, _, err := s.client.ImageInspectWithRaw(context.Background(), imageName)
 
-		composeData := getComposeData(container.Labels)
+		composeData := s.getComposeData(container.Labels)
 
 		if composeData.ConfigFiles != "" {
-			if _, err := os.Stat(composeData.WorkingDir + "/" + composeData.ConfigFiles); err == nil {
+			if _, err := os.Stat(composeData.ConfigFiles); err == nil {
 				composeData.ConfigExists = true
 			}
 		}
@@ -199,33 +207,34 @@ func (s *DockerService) UpdateContainer(containerID string, c chan string) {
 		c <- "Error!"
 		panic(err)
 	}
-	composeData := getComposeData(cIns.Config.Labels)
+	composeData := s.getComposeData(cIns.Config.Labels)
 
-	var composeFile string
-	if strings.HasPrefix(composeData.ConfigFiles, composeData.WorkingDir) {
-		composeFile = composeData.ConfigFiles
-	} else {
-		composeFile = fmt.Sprintf("%s/%s", composeData.WorkingDir, composeData.ConfigFiles)
-	}
+	composeFile := composeData.ConfigFiles
 
 	c <- fmt.Sprintf("Stopping service %s... ", composeData.Service)
 
 	// docker-compose -f docker-compose.yml -f docker-compose.admin.yml run backup_db
-	runCommand(dockerComposePath, "-f", composeFile, "stop", composeData.Service)
+	s.runCommand(dockerComposePath, "-f", composeFile, "stop", composeData.Service)
 
 	c <- fmt.Sprintf("done.,\nRemoving service %s... ", composeData.Service)
 	time.Sleep(2 * time.Second)
-	runCommand(dockerComposePath, "-f", composeFile, "rm", "-f", composeData.Service)
+	s.runCommand(dockerComposePath, "-f", composeFile, "rm", "-f", composeData.Service)
 
 	c <- fmt.Sprintf("done.,\nStarting service %s with the latest image... ", composeData.Service)
 	time.Sleep(2 * time.Second)
-	runCommand(dockerComposePath, "-f", composeFile, "up", "-d", composeData.Service)
+	s.runCommand(dockerComposePath, "-f", composeFile, "up", "-d", composeData.Service)
 	//runCommand(dockerComposePath, "-f", composeFile, "start", composeData.Service)
 	c <- "done.\nSuccess!"
 }
 
-func runCommand(name string, arg ...string) {
+func (s *DockerService) runCommand(name string, arg ...string) {
 	cmd := exec.Command(name, arg...)
+
+	if !s.IsLocal {
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, fmt.Sprintf("DOCKER_HOST=%s", s.URL))
+	}
+
 	stdout, err := cmd.Output()
 
 	if err != nil {
@@ -235,8 +244,9 @@ func runCommand(name string, arg ...string) {
 	logger.Println(string(stdout))
 }
 
-func getComposeData(labels map[string]string) ComposeData {
+func (s *DockerService) getComposeData(labels map[string]string) ComposeData {
 	var composeData ComposeData
+	workingDir := ""
 	for label, labelVal := range labels {
 		switch label {
 		case "com.docker.compose.service":
@@ -246,7 +256,19 @@ func getComposeData(labels map[string]string) ComposeData {
 		case "com.docker.compose.project.config_files":
 			composeData.ConfigFiles = labelVal
 		case "com.docker.compose.project.working_dir":
-			composeData.WorkingDir = labelVal
+			workingDir = labelVal
+		}
+	}
+
+	if !strings.HasPrefix(composeData.ConfigFiles, workingDir) {
+		composeData.ConfigFiles = fmt.Sprintf("%s/%s", workingDir, composeData.ConfigFiles)
+	}
+
+	if s.PathMappings != nil {
+		for _, m := range s.PathMappings {
+			if strings.HasPrefix(composeData.ConfigFiles, m.From) {
+				composeData.ConfigFiles = strings.Replace(composeData.ConfigFiles, m.From, m.To, 1)
+			}
 		}
 	}
 	return composeData

@@ -1,7 +1,8 @@
 package schedular
 
 import (
-	"github.com/jasonlvhit/gocron"
+	"math/rand"
+	"time"
 
 	"github.com/erangaj/homedockyard/pkg/dockerservice"
 )
@@ -16,7 +17,14 @@ func (c *context) pullImages() {
 
 // ExecuteCronJobs starts backdround jobs
 func ExecuteCronJobs(ds *dockerservice.DockerService) {
-	c := context{ds: ds}
-	gocron.Every(1).Hour().Do(c.pullImages)
-	<-gocron.Start()
+	time.Sleep(time.Duration(rand.Intn(20)) * time.Minute)
+	ticker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for t := range ticker.C {
+			_ = t
+			c := context{ds: ds}
+			go c.pullImages()
+		}
+	}()
+
 }

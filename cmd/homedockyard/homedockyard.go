@@ -16,24 +16,24 @@ func main() {
 	if endpoints == nil || len(endpoints) == 0 {
 		ds := dockerservice.DockerService{}
 		ds.Name = "Local"
+		ds.IsLocal = true
+		ds.PathMappings = nil
 		ds.ID = 0
-		ds.InitLocal()
+		ds.Init()
 		go schedular.ExecuteCronJobs(&ds)
 		dockerServices = append(dockerServices, ds)
-	}
-
-	for i, endpoint := range endpoints {
-		ds := dockerservice.DockerService{}
-		ds.Name = endpoint.Name
-		ds.ID = i
-		if endpoint.Type == "Local" {
-			ds.InitLocal()
-		} else {
-			ds.Init(endpoint.URL)
+	} else {
+		for i, endpoint := range endpoints {
+			ds := dockerservice.DockerService{}
+			ds.Name = endpoint.Name
+			ds.PathMappings = endpoint.PathMappings
+			ds.URL = endpoint.URL
+			ds.ID = i
+			ds.IsLocal = (endpoint.Type == "Local")
+			ds.Init()
+			go schedular.ExecuteCronJobs(&ds)
+			dockerServices = append(dockerServices, ds)
 		}
-		go schedular.ExecuteCronJobs(&ds)
-		dockerServices = append(dockerServices, ds)
 	}
-
 	server.Serv(&dockerServices, true)
 }

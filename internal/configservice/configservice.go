@@ -10,9 +10,16 @@ import (
 
 // Endpoint represents the docker endpoint
 type Endpoint struct {
-	Name string `yaml:"name"`
-	Type string `yaml:"type"`
-	URL  string `yaml:"URL"`
+	Name         string        `yaml:"name"`
+	Type         string        `yaml:"type"`
+	URL          string        `yaml:"URL"`
+	PathMappings []PathMapping `yaml:"pathMappings"`
+}
+
+// PathMapping represent mapping of docker compose file paths
+type PathMapping struct {
+	From string `yaml:"from"`
+	To   string `yaml:"to"`
 }
 
 // Config represents the config file
@@ -24,18 +31,23 @@ var logger = log.New(os.Stderr, "", log.LstdFlags)
 
 // Read function reads the config file
 func Read() *Config {
-	filename := "/etc/homedockyard/config.yaml"
+	filename := "/homedockyard/config.yaml"
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		home, _ := os.UserHomeDir()
 		filename = home + "/.homedockyard/config.yaml"
 		_, err = os.Stat(filename)
 		if os.IsNotExist(err) {
-			filename = "config.yaml"
+			filename = home + "/etc/homedockyard/config.yaml"
 			_, err = os.Stat(filename)
 			if os.IsNotExist(err) {
-				logger.Printf("Error reading YAML file: %s\n", err)
-				panic(err)
+				filename = "config.yaml"
+				_, err = os.Stat(filename)
+				if os.IsNotExist(err) {
+					logger.Println("No config file found. Generating local config...")
+					local := Config{nil}
+					return &local
+				}
 			}
 		}
 	}
