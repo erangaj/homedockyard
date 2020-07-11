@@ -16,7 +16,8 @@
     "react-scripts": "3.4.1",
     "redux": "^4.0.5",
     "redux-logger": "^3.0.6",
-    "typeface-roboto": "0.0.75"
+    "typeface-roboto": "0.0.75",
+    "websocket-extensions": "^0.1.4"
   },
   "scripts": {
     "start": "react-scripts start",

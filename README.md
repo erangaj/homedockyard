@@ -1,4 +1,4 @@
-#### HomeDockyard
+## HomeDockyard
 
 HomeDockyard is a small web app for monitoring Docker containers from multiple hosts. As the name suggests, HomeDockyard is targeted for home users who run docker containers on their home servers. This project aims to create a docker based web app similar to Home Assistant Supervisor screen, but for generic docker containers.
 
@@ -38,7 +38,7 @@ services:
         image: erangaj/homedockyard
 ```
 
-###### Configuration
+##### Configuration
 
 A configuration file is required to configure HomeDockyard to monitor multiple Docker hosts. At startup HomeDockyard looks for a configuration file in the following locations:
 
