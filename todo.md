@@ -3,7 +3,7 @@
 [*] Single endpoint mode
 [*] Update remote
 [*] Package with settings file
-[ ] Update doco
+[*] Update doco
 
 [ ] Combine instances and containers APIs
 [ ] Make containers component

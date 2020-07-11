@@ -31,7 +31,7 @@ var logger = log.New(os.Stderr, "", log.LstdFlags)
 
 // Read function reads the config file
 func Read() *Config {
-	filename := "/homedockyard/config.yaml"
+	filename := "/config/config.yaml"
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		home, _ := os.UserHomeDir()

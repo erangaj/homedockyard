@@ -9,6 +9,8 @@ RUN pip install docker-compose
 RUN cp /usr/bin/docker-compose /usr/local/bin/docker-compose
 RUN chmod +x /homedockyard
 
+VOLUME /config
+
 EXPOSE 9080
 #USER 1000
 
