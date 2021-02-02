@@ -32,6 +32,7 @@ func main() {
 			ds.IsLocal = (endpoint.Type == "Local")
 			ds.Init()
 			go schedular.ExecuteCronJobs(&ds)
+			ds.StartCheckForUpdates()
 			dockerServices = append(dockerServices, ds)
 		}
 	}
