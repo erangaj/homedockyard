@@ -11,8 +11,8 @@ type context struct {
 	ds *dockerservice.DockerService
 }
 
-func (c *context) pullImages() {
-	c.ds.StartImagePull()
+func (c *context) checkForUpdates() {
+	c.ds.StartCheckForUpdates()
 }
 
 // ExecuteCronJobs starts backdround jobs
@@ -23,7 +23,7 @@ func ExecuteCronJobs(ds *dockerservice.DockerService) {
 		for t := range ticker.C {
 			_ = t
 			c := context{ds: ds}
-			go c.pullImages()
+			go c.checkForUpdates()
 		}
 	}()
 

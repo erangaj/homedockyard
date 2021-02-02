@@ -1,10 +1,12 @@
 package dockerservice
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,11 +31,14 @@ type DockerService struct {
 }
 
 var logger = log.New(os.Stderr, "", log.LstdFlags)
+var webClient = &http.Client{Timeout: 10 * time.Second}
+var imageUpdates map[string]bool
 
 // Container represents a single container
 type Container struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
+	ImageID         string `json:"imageID"`
 	ImageName       string `json:"imageName"`
 	UpdateAvailable bool   `json:"updateAvailable"`
 	//Ports     []types.Port
@@ -65,6 +70,7 @@ func (s *DockerService) InitLocal() {
 
 // Init Initiates Docker connection
 func (s *DockerService) Init() {
+	imageUpdates = make(map[string]bool)
 	if s.IsLocal {
 		s.InitLocal()
 	} else {
@@ -79,11 +85,12 @@ func (s *DockerService) Init() {
 // Containers returns all containers
 func (s *DockerService) Containers() []Container {
 	containers, err := s.client.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-	if err != nil {
-		panic(err)
-	}
-
 	result := make([]Container, len(containers))
+	if err != nil {
+		//panic(err)
+		log.Printf(err.Error())
+		return result
+	}
 
 	for i, container := range containers {
 		cIns, err := s.client.ContainerInspect(context.Background(), container.ID)
@@ -100,8 +107,6 @@ func (s *DockerService) Containers() []Container {
 
 		imageName := cIns.Config.Image
 
-		iIns, _, err := s.client.ImageInspectWithRaw(context.Background(), imageName)
-
 		composeData := s.getComposeData(container.Labels)
 
 		if composeData.ConfigFiles != "" {
@@ -114,7 +119,8 @@ func (s *DockerService) Containers() []Container {
 			ID:              container.ID,
 			Name:            name,
 			ImageName:       imageName,
-			UpdateAvailable: (container.ImageID != iIns.ID),
+			ImageID:         container.ImageID,
+			UpdateAvailable: imageUpdates[container.ID],
 			//Labels:    container.Labels,
 			State:  container.State,
 			Status: container.Status,
@@ -127,10 +133,10 @@ func (s *DockerService) Containers() []Container {
 	return result
 }
 
-// StartImagePull starts pulling latest images from the registries
-func (s *DockerService) StartImagePull() string {
+// StartCheckForUpdates starts pulling latest images from the registries
+func (s *DockerService) StartCheckForUpdates() string {
 	if !s.ImagePullRunning {
-		go s.pullImages()
+		go s.checkForUpdates()
 		return "started"
 	}
 	return "already running"
@@ -141,7 +147,7 @@ func (s *DockerService) Close() {
 	s.client.Close()
 }
 
-func (s *DockerService) pullImages() {
+/*func (s *DockerService) pullImages() {
 	logger.Println("Start pulling images")
 	s.ImagePullRunning = true
 	containers := s.Containers()
@@ -168,7 +174,7 @@ func (s *DockerService) pullImages() {
 	}
 	logger.Println("Finish pulling images")
 	s.ImagePullRunning = false
-}
+}*/
 
 // StartContainer starts the container
 func (s *DockerService) StartContainer(containerID string) bool {
@@ -272,4 +278,111 @@ func (s *DockerService) getComposeData(labels map[string]string) ComposeData {
 		}
 	}
 	return composeData
+}
+
+// checkForUpdates checks for updates
+func (s *DockerService) checkForUpdates() {
+
+	info, err := s.client.Info(context.Background())
+	if err != nil {
+		logger.Println(err)
+		return
+	}
+
+	var arch string
+	var variant string
+	os := info.OSType
+
+	infoarch := info.Architecture
+	if infoarch == "x86_64" {
+		arch = "amd64"
+		variant = ""
+	} else if strings.HasPrefix(infoarch, "armv7") {
+		arch = "arm"
+		variant = "v7"
+	} else if strings.HasPrefix(infoarch, "armv6") {
+		arch = "arm"
+		variant = "v6"
+	} else {
+		arch = infoarch
+		variant = ""
+	}
+
+	containers := s.Containers()
+	for _, c := range containers {
+		image := c.ImageName
+
+		iIns, _, err := s.client.ImageInspectWithRaw(context.Background(), image)
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+
+		if len(iIns.RepoDigests) == 0 {
+			continue
+		}
+
+		version := ""
+		if strings.Contains(image, ":") {
+			split := strings.Split(image, ":")
+			image = split[0]
+			version = split[1]
+		}
+
+		if strings.Contains(image, "/") {
+			image = "https://hub.docker.com/v2/repositories/" + image
+		} else {
+			image = "https://hub.docker.com/v2/repositories/library/" + image
+		}
+
+		image = image + "/tags/" + version
+
+		r, err := webClient.Get(image)
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+		defer r.Body.Close()
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+
+		var objmap map[string]interface{}
+		err = json.Unmarshal([]byte(string(body)), &objmap)
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+
+		m := objmap["results"]
+
+		if m != nil {
+			results := m.([]interface{})
+			result := results[0].(map[string]interface{})
+			images := result["images"].([]interface{})
+
+			for _, im := range images {
+				image := im.(map[string]interface{})
+				if image["architecture"] != arch {
+					continue
+				}
+
+				if image["os"] != os {
+					continue
+				}
+
+				imageVariant := image["variant"]
+				if (variant != "" || imageVariant != nil) && (variant != imageVariant) {
+					continue
+				}
+
+				digest := image["digest"].(string)
+				imageUpdates[c.ID] = !strings.Contains(iIns.RepoDigests[0], digest)
+			}
+		}
+
+	}
 }
